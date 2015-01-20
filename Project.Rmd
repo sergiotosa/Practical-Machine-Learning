@@ -1,0 +1,72 @@
+---
+title: "Practical Machine Learning"
+author: "Sergio Torregrosa"
+date: "21/12/2014"
+output: html_document
+---
+
+##INTRODUCTION
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+##DATASET
+The training data for this project are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
+
+##METHOD
+Looking to the data in the firts time, there are a number of columns that appear to have non-usable data. So, a cleaning of those variables is needed in order to optimize the CPU usage during the project. Besides, initial 8 columns are only information about the name of the participant, dates, windows and other information not useful for the analysis purposes.
+
+```{r}
+  library(caret)
+  library(randomForest)
+  set.seed(12345)
+  Train<-read.csv("pml-training.csv")
+  Test<-read.csv("pml-testing.csv") ##20 excercises
+  Train<-Train[-(1:7)]
+  Test<-Test[-(1:7)]
+  Train<-Train[,!sapply(Train, function(x) any(is.na(x)))]
+  Train<-Train[,!sapply(Train, function(x) any(x==""))]
+  Test<-Test[,!sapply(Test, function(x) any(is.na(x)))]
+  Test<-Test[,!sapply(Test, function(x) any(x==""))]
+```
+
+Focused on trainig set, load and split the trainig dataset into 75/25 subsamples
+```{r}
+  inTrain<-createDataPartition(y=Train$classe,p=0.75,list=FALSE)
+  Training<-Train[inTrain,]
+  Testing<-Train[-inTrain,]
+```
+
+We'll use the trainig dataset to contruct the model, and then use the testing dataset to cross-validation. Random forests model will be used.
+```{r}
+  modFit <- train(Training$classe~., method="rf", data=Training, verbose=FALSE)
+  modFit$finalModel
+```
+
+##CROSS-VALIDATION
+Once training dataset model is constructed, we'll check the validity of it and use testing dataset in order to validate the model.
+Validity check of training data:
+```{r}
+  trainingPred<-predict(modFit,Training)
+  confusionMatrix(trainingPred, Training$classe)
+```
+Cross-validation for testing data:
+```{r}
+  testingPred<-predict(modFit,Testing)
+  confusionMatrix(testingPred, Testing$classe)
+```
+
+##CHECK THE TEST DATASET
+Part of the work is to evaluate the validity of the model with test dataset, consisting on 20 data to be fit with the calculated model
+```{r}
+  testPred<-predict(modFit,Test)
+  testPred
+```
+All those results give a score in the submission.
+
+##CONCLUSION
+Model's accuracy is near to 100% and crossvalidation endorses the validity of the model.
